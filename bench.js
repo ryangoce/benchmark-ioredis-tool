@@ -2,6 +2,7 @@
 
 var childProcess = require('child_process');
 var Redis = require('ioredis');
+const _ = require('lodash');
 
 console.log('==========================');
 console.log('redis: ' + require('./package.json').version);
@@ -29,107 +30,269 @@ var quit = function () {
   redisBench.quit();
 };
 
+var cleanData = function (cb) {
+  var redis = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT);
 
-
-suite('10,000 vehicles: 2000 size', function () {
-  var setCounter = 0;
-  var zaddCounter = 0;
-  var getsetCounter = function () {
-    return setCounter++;
-  }
-  
-  var getzaddCounter = function () {
-    return zaddCounter++;
-  }
-
-  set('mintime', 5000);
-  set('iterations', 2000);
-  set('concurrency', 300);
-
-  before(function (start) {
-    var redis = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT);
-    var item = [];
+  redis.on('ready', function () {
     const pipeline = redis.pipeline();
-    for (var i = 0; i < 10000; ++i) {
-      pipeline.set('set:vehicle' + i, payload);
-      pipeline.zadd('zadd:vehicle' + i, 0, payload);375
-    }
-    pipeline.exec(function () {
-      waitReady(start);
-    });
-  });
-
-  bench('get and zrange', function (next) {
-
-    const counter = getsetCounter();
-    const getFromSnapshot = function() {
-      return new Promise((resolve, reject) => {
-        redisBench.get('set:vehicle' + counter, function() {
-          redisBench.zrange('zadd:vehicle' + counter, 0, -1, resolve);
-        });
+    redis.keys('bench*').then((data) => {
+      _.each(data, (item) => {
+        pipeline.del(item);
       });
-    };
 
-    getFromSnapshot().then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(function() {
-      redisBench.zadd('zadd:vehicle' + counter, 0, payload, next);
+      pipeline.exec(cb);
     });
   });
+}
 
-  after(function() {
-    redisBench.flushall().then(quit);
-  });
-});
 
-xsuite('PIPELINE: 10,000 vehicles: 2000 size', function () {
+
+suite('direct redis', function () {
   var setCounter = 0;
   var zaddCounter = 0;
   var getsetCounter = function () {
     return setCounter++;
   }
-  
+
   var getzaddCounter = function () {
     return zaddCounter++;
   }
 
   set('mintime', 5000);
   set('iterations', 10000);
-  set('concurrency', 300);
+  set('concurrency', 500);
 
   before(function (start) {
     var redis = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT);
     var item = [];
     const pipeline = redis.pipeline();
     for (var i = 0; i < 10000; ++i) {
-      pipeline.set('set:vehicle' + i, payload);
-      pipeline.zadd('zadd:vehicle' + i, 0, payload);375
+      pipeline.set('bench:set:vehicle' + i, payload);
+      pipeline.zadd('bench:zadd:vehicle' + i, 0, payload);
+      375
     }
     pipeline.exec(function () {
       waitReady(start);
     });
   });
 
-  bench('get and zrange', function (next) {
+  bench('10,000 vehicles @11x', function (next) {
 
     const counter = getsetCounter();
-    const getFromSnapshot = function() {
+    const getFromSnapshot = function () {
       return new Promise((resolve, reject) => {
-        redisBench.get('set:vehicle' + counter, function() {
-          redisBench.zrange('zadd:vehicle' + counter, 0, -1, resolve);
+        redisBench.get('bench:set:vehicle' + counter, function () {
+          redisBench.zrange('bench:zadd:vehicle' + counter, 0, -1, resolve);
         });
       });
     };
 
-    getFromSnapshot().then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(function() {
-      redisBench.zadd('zadd:vehicle' + counter, 0, payload, next);
+    getFromSnapshot().then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(function () {
+      redisBench.zadd('bench:zadd:vehicle' + counter, 0, payload, next);
     });
-    
   });
 
-  after(function() {
-    redisBench.flushall().then(quit);
+  after(function (cb) {
+    cleanData(cb);
   });
 });
 
+suite('adrai eventstore with fast-redis backend and no pipelining', function () {
+  let es;
+  let counter = 0;
+
+  set('mintime', 5000);
+  set('iterations', 10000);
+  set('concurrency', 500);
+
+  const getFromSnapshot = function (aggregateId, aggregate, context, partitionKey) {
+    return new Promise((resolve, reject) => {
+      es.getFromSnapshot({
+        aggregateId: aggregateId,
+        aggregate: aggregate, // optional
+        context: context, // optional
+        partitionKey: partitionKey
+      }, function (err, snapshot, stream) {
+        resolve({
+          snapshot: snapshot,
+          stream: stream,
+          error: err
+        });
+      });
+    });
+  }
+
+  before(function (start) {
+
+    const FastRedisEventStore = require('./fast-redis.evenstore');
+
+    const options = {
+      type: FastRedisEventStore,
+      host: process.env.CACHE_HOST,
+      port: process.env.CACHE_PORT,
+      isCluster: false,
+      prefix: 'bench'
+    };
+
+    es = require('eventstore')(options);
+    es.init(function () {
+      const tasks = [];
+      for (let index = 0; index < 10000; index++) {
+        // add 10k vehicles
+        const vehicleKey = `vehicle${counter++}`;
+        tasks.push(getFromSnapshot(vehicleKey, 'vehicle', 'auction', '').then((data) => {
+          return new Promise((resolve, reject) => {
+            const stream = data.stream;
+            stream.addEvent({
+              name: 'vehicle_created',
+              payload: payload
+            });
+
+            stream.commit(resolve);
+          });
+        }).catch(console.error));
+      }
+
+      Promise.all(tasks).then(function() {
+        counter = 0;
+        start();
+      });
+    });
+
+
+  });
+
+
+  bench('10,000 vehicles @11x', function (next) {
+    const vehicleKey = `vehicle${counter++}`;
+
+    getFromSnapshot(vehicleKey, 'vehicle', 'auction', '')
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then((data) => {
+        const stream = data.stream;
+        stream.addEvent({
+          name: 'vehicle_created',
+          payload: payload
+        });
+
+        stream.commit(next);
+      });
+  });
+
+  after(function (cb) {
+    cleanData(cb);
+  });
+});
+
+suite('adrai eventstore with fast-redis backend and with pipelining', function () {
+  let es;
+  let counter = 0;
+
+  set('mintime', 5000);
+  set('iterations', 10000);
+  set('concurrency', 500);
+
+  const getFromSnapshot = function (aggregateId, aggregate, context, partitionKey) {
+    return new Promise((resolve, reject) => {
+      es.getFromSnapshot({
+        aggregateId: aggregateId,
+        aggregate: aggregate, // optional
+        context: context, // optional
+        partitionKey: partitionKey
+      }, function (err, snapshot, stream) {
+        resolve({
+          snapshot: snapshot,
+          stream: stream,
+          error: err
+        });
+      });
+    });
+  }
+
+  before(function (start) {
+
+    const FastRedisEventStore = require('./fast-redis.evenstore');
+
+    const options = {
+      type: FastRedisEventStore,
+      host: process.env.CACHE_HOST,
+      port: process.env.CACHE_PORT,
+      isCluster: false,
+      pipelined: true,
+      prefix: 'bench'
+    };
+
+    es = require('eventstore')(options);
+    es.init(function () {
+      const tasks = [];
+      for (let index = 0; index < 10000; index++) {
+        // add 10k vehicles
+        const vehicleKey = `vehicle${counter++}`;
+        tasks.push(getFromSnapshot(vehicleKey, 'vehicle', 'auction', '').then((data) => {
+          return new Promise((resolve, reject) => {
+            const stream = data.stream;
+            stream.addEvent({
+              name: 'vehicle_created',
+              payload: payload
+            });
+
+            stream.commit(resolve);
+          });
+        }).catch(console.error));
+      }
+
+      Promise.all(tasks).then(function() {
+        counter = 0;
+        start();
+      });
+    });
+
+
+  });
+
+
+  bench('10,000 vehicles @11x', function (next) {
+    const vehicleKey = `vehicle${counter++}`;
+
+    getFromSnapshot(vehicleKey, 'vehicle', 'auction', '')
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then((data) => {
+        const stream = data.stream;
+        stream.addEvent({
+          name: 'vehicle_created',
+          payload: payload
+        });
+
+        stream.commit(next);
+      });
+  });
+
+  after(function (cb) {
+    cleanData(cb);
+  });
+});
 // suite('SET foo bar', function () {
 //   set('mintime', 5000);
 //   set('concurrency', 1);

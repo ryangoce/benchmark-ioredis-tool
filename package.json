@@ -13,6 +13,9 @@
     "matcha": "^0.7.0"
   },
   "dependencies": {
-    "ioredis": "^4.1.0"
+    "cluster-key-slot": "^1.0.12",
+    "eventstore": "^1.14.3",
+    "ioredis": "^4.1.0",
+    "lodash": "^4.17.11"
   }
 }
