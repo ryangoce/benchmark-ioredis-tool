@@ -19,8 +19,8 @@ var waitReady = function (next) {
       next();
     }
   }
-  redisJD = new Redis({ parser: 'javascript', dropBufferSupport: true });
-  redisJ = new Redis({ parser: 'javascript', dropBufferSupport: false });
+  redisJD = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT, { parser: 'javascript', dropBufferSupport: true });
+  redisJ = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT, { parser: 'javascript', dropBufferSupport: false });
   redisJD.on('ready', check);
   redisJ.on('ready', check);
 };
@@ -52,7 +52,7 @@ suite('LRANGE foo 0 99', function () {
   set('mintime', 5000);
   set('concurrency', 300);
   before(function (start) {
-    var redis = new Redis();
+    var redis = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT);
     var item = [];
     for (var i = 0; i < 100; ++i) {
       item.push((Math.random() * 100000 | 0) + 'str');
