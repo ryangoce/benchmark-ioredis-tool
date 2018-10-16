@@ -42,8 +42,9 @@ suite('SINGLE THREAD: GET AND ZRANGE: 10000 vehicles: 2000 size', function () {
     return zaddCounter++;
   }
 
-  set('mintime', 10000);
-  set('concurrency', 700);
+  set('mintime', 5000);
+  set('iterations', 10000);
+  set('concurrency', 300);
 
   before(function (start) {
     var redis = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT);
@@ -51,7 +52,7 @@ suite('SINGLE THREAD: GET AND ZRANGE: 10000 vehicles: 2000 size', function () {
     const pipeline = redis.pipeline();
     for (var i = 0; i < 10000; ++i) {
       pipeline.set('set:vehicle' + i, payload);
-      pipeline.zadd('zadd:vehicle' + i, 0, payload);
+      pipeline.zadd('zadd:vehicle' + i, 0, payload);375
     }
     pipeline.exec(function () {
       waitReady(start);
@@ -59,12 +60,25 @@ suite('SINGLE THREAD: GET AND ZRANGE: 10000 vehicles: 2000 size', function () {
   });
 
   bench('get and zrange', function (next) {
-    redisBench.get('set:vehicle' + getsetCounter(), function() {
-      redisBench.zrange('zadd:vehicle' + getzaddCounter(), 0, -1, next);
-    });
+
+    const getFromSnapshot = function() {
+      return new Promise((resolve, reject) => {
+        const counter = getsetCounter();
+        redisBench.get('set:vehicle' + counter, function() {
+          redisBench.zrange('zadd:vehicle' + counter, 0, -1, function() {
+            redisBench.zadd('zadd:vehicle' + counter, 0, payload, resolve);
+          });
+        });
+      });
+    };
+
+    getFromSnapshot().then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(next);
+    
   });
 
-  after(quit);
+  after(function() {
+    redisBench.flushall().then(quit);
+  });
 });
 
 // suite('SET foo bar', function () {
