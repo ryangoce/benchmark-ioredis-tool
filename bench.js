@@ -124,7 +124,7 @@ suite('adrai eventstore with fast-redis backend and no pipelining', function () 
 
   before(function (start) {
 
-    const FastRedisEventStore = require('./fast-redis.evenstore');
+    const FastRedisEventStore = require('./fast-redis.eventstore');
 
     const options = {
       type: FastRedisEventStore,
