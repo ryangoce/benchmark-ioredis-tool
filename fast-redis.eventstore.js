@@ -557,6 +557,7 @@ _.extend(FastRedis.prototype, {
     clear: function (callback) {
         implementError(callback);
     }
+    
 });
 
 module.exports = FastRedis;
