@@ -11,65 +11,102 @@ console.log('OS: ' + os.platform() + ' ' + os.arch());
 console.log('node version: ' + process.version);
 console.log('==========================');
 
-var redisJD, redisJ;
+const payloadSize = process.env.LOAD_SIZE || 2000;
+let payload = '';
+
+for (let index = 0; index < payloadSize; index++) {
+  payload += 'a';
+}
+
+var redisBench;
+
 var waitReady = function (next) {
-  var pending = 2;
-  function check() {
-    if (!--pending) {
-      next();
-    }
-  }
-  redisJD = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT, { parser: 'javascript', dropBufferSupport: true });
-  redisJ = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT, { parser: 'javascript', dropBufferSupport: false });
-  redisJD.on('ready', check);
-  redisJ.on('ready', check);
+  redisBench = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT);
+  next();
 };
 
 var quit = function () {
-  redisJD.quit();
-  redisJ.quit();
+  redisBench.quit();
 };
 
-suite('SET foo bar', function () {
-  set('mintime', 5000);
-  set('concurrency', 300);
-  before(function (start) {
-    waitReady(start);
-  });
 
-  bench('javascript parser + dropBufferSupport: true', function (next) {
-    redisJD.set('foo', 'bar', next);
-  });
 
-  bench('javascript parser', function (next) {
-    redisJ.set('foo', 'bar', next);
-  });
+suite('SINGLE THREAD: GET AND ZRANGE: 10000 vehicles: 2000 size', function () {
+  var setCounter = 0;
+  var zaddCounter = 0;
+  var getsetCounter = function () {
+    return setCounter++;
+  }
+  
+  var getzaddCounter = function () {
+    return zaddCounter++;
+  }
 
-  after(quit);
-});
+  set('mintime', 10000);
+  set('concurrency', 700);
 
-suite('LRANGE foo 0 99', function () {
-  set('mintime', 5000);
-  set('concurrency', 300);
   before(function (start) {
     var redis = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT);
     var item = [];
-    for (var i = 0; i < 100; ++i) {
-      item.push((Math.random() * 100000 | 0) + 'str');
+    const pipeline = redis.pipeline();
+    for (var i = 0; i < 10000; ++i) {
+      pipeline.set('set:vehicle' + i, payload);
+      pipeline.zadd('zadd:vehicle' + i, 0, payload);
     }
-    redis.del('foo');
-    redis.lpush('foo', item, function () {
+    pipeline.exec(function () {
       waitReady(start);
     });
   });
 
-  bench('javascript parser + dropBufferSupport: true', function (next) {
-    redisJD.lrange('foo', 0, 99, next);
-  });
-
-  bench('javascript parser', function (next) {
-    redisJ.lrange('foo', 0, 99, next);
+  bench('get and zrange', function (next) {
+    redisBench.get('set:vehicle' + getsetCounter(), function() {
+      redisBench.zrange('zadd:vehicle' + getzaddCounter(), 0, -1, next);
+    });
   });
 
   after(quit);
 });
+
+// suite('SET foo bar', function () {
+//   set('mintime', 5000);
+//   set('concurrency', 1);
+//   before(function (start) {
+//     waitReady(start);
+//   });
+
+//   bench('javascript parser + dropBufferSupport: true', function (next) {
+//     redisJD.set('foo', 'bar', next);
+//   });
+
+//   bench('javascript parser', function (next) {
+//     redisJ.set('foo', 'bar', next);
+//   });
+
+//   after(quit);
+// });
+
+// suite('LRANGE foo 0 99', function () {
+//   set('mintime', 5000);
+//   set('concurrency', 300);
+//   before(function (start) {
+//     var redis = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT);
+//     var item = [];
+//     for (var i = 0; i < 100; ++i) {
+//       item.push((Math.random() * 100000 | 0) + 'str');
+//     }
+//     redis.del('foo');
+//     redis.lpush('foo', item, function () {
+//       waitReady(start);
+//     });
+//   });
+
+//   bench('javascript parser + dropBufferSupport: true', function (next) {
+//     redisJD.lrange('foo', 0, 99, next);
+//   });
+
+//   bench('javascript parser', function (next) {
+//     redisJ.lrange('foo', 0, 99, next);
+//   });
+
+//   after(quit);
+// });
