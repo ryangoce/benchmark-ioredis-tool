@@ -43,7 +43,7 @@ suite('SINGLE THREAD: GET AND ZRANGE: 10000 vehicles: 2000 size', function () {
   }
 
   set('mintime', 5000);
-  set('iterations', 10000);
+  set('iterations', 2000);
   set('concurrency', 300);
 
   before(function (start) {
