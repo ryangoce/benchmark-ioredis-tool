@@ -31,7 +31,7 @@ var quit = function () {
 
 
 
-suite('SINGLE THREAD: GET AND ZRANGE: 10000 vehicles: 2000 size', function () {
+suite('10,000 vehicles: 2000 size', function () {
   var setCounter = 0;
   var zaddCounter = 0;
   var getsetCounter = function () {
@@ -61,18 +61,67 @@ suite('SINGLE THREAD: GET AND ZRANGE: 10000 vehicles: 2000 size', function () {
 
   bench('get and zrange', function (next) {
 
+    const counter = getsetCounter();
     const getFromSnapshot = function() {
       return new Promise((resolve, reject) => {
-        const counter = getsetCounter();
         redisBench.get('set:vehicle' + counter, function() {
-          redisBench.zrange('zadd:vehicle' + counter, 0, -1, function() {
-            redisBench.zadd('zadd:vehicle' + counter, 0, payload, resolve);
-          });
+          redisBench.zrange('zadd:vehicle' + counter, 0, -1, resolve);
         });
       });
     };
 
-    getFromSnapshot().then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(next);
+    getFromSnapshot().then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(function() {
+      redisBench.zadd('zadd:vehicle' + counter, 0, payload, next);
+    });
+  });
+
+  after(function() {
+    redisBench.flushall().then(quit);
+  });
+});
+
+xsuite('PIPELINE: 10,000 vehicles: 2000 size', function () {
+  var setCounter = 0;
+  var zaddCounter = 0;
+  var getsetCounter = function () {
+    return setCounter++;
+  }
+  
+  var getzaddCounter = function () {
+    return zaddCounter++;
+  }
+
+  set('mintime', 5000);
+  set('iterations', 10000);
+  set('concurrency', 300);
+
+  before(function (start) {
+    var redis = new Redis(process.env.CACHE_HOST, process.env.CACHE_PORT);
+    var item = [];
+    const pipeline = redis.pipeline();
+    for (var i = 0; i < 10000; ++i) {
+      pipeline.set('set:vehicle' + i, payload);
+      pipeline.zadd('zadd:vehicle' + i, 0, payload);375
+    }
+    pipeline.exec(function () {
+      waitReady(start);
+    });
+  });
+
+  bench('get and zrange', function (next) {
+
+    const counter = getsetCounter();
+    const getFromSnapshot = function() {
+      return new Promise((resolve, reject) => {
+        redisBench.get('set:vehicle' + counter, function() {
+          redisBench.zrange('zadd:vehicle' + counter, 0, -1, resolve);
+        });
+      });
+    };
+
+    getFromSnapshot().then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(getFromSnapshot).then(function() {
+      redisBench.zadd('zadd:vehicle' + counter, 0, payload, next);
+    });
     
   });
 
