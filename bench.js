@@ -190,6 +190,88 @@ suite('adrai eventstore with fast-redis backend and no pipelining', function () 
       });
   });
 
+  bench('10,000 vehicles @9x', function (next) {
+    const vehicleKey = `vehicle${counter++}`;
+
+    getFromSnapshot(vehicleKey, 'vehicle', 'auction', '')
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then((data) => {
+        const stream = data.stream;
+        stream.addEvent({
+          name: 'vehicle_created',
+          payload: payload
+        });
+
+        stream.commit(next);
+      });
+  });
+
+  bench('10,000 vehicles @7x', function (next) {
+    const vehicleKey = `vehicle${counter++}`;
+
+    getFromSnapshot(vehicleKey, 'vehicle', 'auction', '')
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then((data) => {
+        const stream = data.stream;
+        stream.addEvent({
+          name: 'vehicle_created',
+          payload: payload
+        });
+
+        stream.commit(next);
+      });
+  });
+
+  bench('10,000 vehicles @5x', function (next) {
+    const vehicleKey = `vehicle${counter++}`;
+
+    getFromSnapshot(vehicleKey, 'vehicle', 'auction', '')
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then((data) => {
+        const stream = data.stream;
+        stream.addEvent({
+          name: 'vehicle_created',
+          payload: payload
+        });
+
+        stream.commit(next);
+      });
+  });
+
+  bench('10,000 vehicles @3x', function (next) {
+    const vehicleKey = `vehicle${counter++}`;
+
+    getFromSnapshot(vehicleKey, 'vehicle', 'auction', '')
+      .then((data) => {
+        const stream = data.stream;
+        stream.addEvent({
+          name: 'vehicle_created',
+          payload: payload
+        });
+
+        stream.commit(next);
+      });
+  });
+
+  after(function (cb) {
+    cleanData(cb);
+  });
+
   after(function (cb) {
     cleanData(cb);
   });
@@ -278,6 +360,84 @@ suite('adrai eventstore with fast-redis backend and with pipelining', function (
       .then(() => {
         return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
       })
+      .then((data) => {
+        const stream = data.stream;
+        stream.addEvent({
+          name: 'vehicle_created',
+          payload: payload
+        });
+
+        stream.commit(next);
+      });
+  });
+
+  bench('10,000 vehicles @9x', function (next) {
+    const vehicleKey = `vehicle${counter++}`;
+
+    getFromSnapshot(vehicleKey, 'vehicle', 'auction', '')
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then((data) => {
+        const stream = data.stream;
+        stream.addEvent({
+          name: 'vehicle_created',
+          payload: payload
+        });
+
+        stream.commit(next);
+      });
+  });
+
+  bench('10,000 vehicles @7x', function (next) {
+    const vehicleKey = `vehicle${counter++}`;
+
+    getFromSnapshot(vehicleKey, 'vehicle', 'auction', '')
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then((data) => {
+        const stream = data.stream;
+        stream.addEvent({
+          name: 'vehicle_created',
+          payload: payload
+        });
+
+        stream.commit(next);
+      });
+  });
+
+  bench('10,000 vehicles @5x', function (next) {
+    const vehicleKey = `vehicle${counter++}`;
+
+    getFromSnapshot(vehicleKey, 'vehicle', 'auction', '')
+      .then(() => {
+        return getFromSnapshot(vehicleKey, 'vehicle', 'auction', '');
+      })
+      .then((data) => {
+        const stream = data.stream;
+        stream.addEvent({
+          name: 'vehicle_created',
+          payload: payload
+        });
+
+        stream.commit(next);
+      });
+  });
+
+  bench('10,000 vehicles @3x', function (next) {
+    const vehicleKey = `vehicle${counter++}`;
+
+    getFromSnapshot(vehicleKey, 'vehicle', 'auction', '')
       .then((data) => {
         const stream = data.stream;
         stream.addEvent({
