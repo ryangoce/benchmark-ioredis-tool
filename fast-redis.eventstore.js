@@ -9,9 +9,9 @@ let totalItems = 0;
 let totalDuration = 0;
 
 setInterval(() => {
-    // _.each(Object.keys(durationMap), (key) => {
-    //     console.log(`${key}. ${durationMap[key].totalDuration / durationMap[key].totalItems} ave. ${durationMap[key].max} max.`);
-    // });
+    _.each(Object.keys(durationMap), (key) => {
+        console.log(`${key}. ${durationMap[key].totalDuration / durationMap[key].totalItems} ave. ${durationMap[key].max} max.`);
+    });
 
     durationMap = {};
 }, 10000);
@@ -38,6 +38,7 @@ const addDuration = function(name, start, end) {
 }
 
 function FastRedis(opts) {
+    console.log(opts);
     var options = _.defaults(opts || {}, {
         prefix: '',
         maxSnapshotLength: 10000,
@@ -117,9 +118,9 @@ _.extend(FastRedis.prototype, {
         self._pipeline.set(key, value);
         self._waitForExec(cb);
     },
-    zrange: function(key, min, max, cb) {
+    zrangebyscore: function(key, min, max, cb) {
         const self = this;
-        self._pipeline.zrange(key, min, max);
+        self._pipeline.zrangebyscore(key, min, max);
         self._waitForExec(cb);
     },
     zadd: function(key, score, value, cb) {
@@ -242,7 +243,7 @@ _.extend(FastRedis.prototype, {
         const self = this;
         const prefix = this._getPrefix(query.aggregate);
         const start = new Date().getTime();
-        redisCommandHandler.zrange(`${prefix}aggregate:${query.aggregateId}:events`, revMin, revMax, (err, data) => {
+        redisCommandHandler.zrangebyscore(`${prefix}aggregate:${query.aggregateId}:events`, revMin, revMax === -1 ? '+inf' : revMax, (err, data) => {
             const end = new Date().getTime();
             if (end - start > 100) {
                 // console.warn(`getEventsByRevision greater than 100ms. actual ${end - start}ms. len: ${JSON.stringify(data).length}`);
@@ -367,7 +368,7 @@ _.extend(FastRedis.prototype, {
             }
 
             tasks.push(new Promise((resolve, reject) => {
-                redisCommandHandler.zadd(`${prefix}aggregate:${item.aggregateId}:events`, item.streamRevision, sItem, (err, data) => {
+                redisCommandHandler.zadd(`${prefix}aggregate:${item.aggregateId}:events`, +item.streamRevision, sItem, (err, data) => {
                     if (err) {
                         reject(err);
                     } else {
