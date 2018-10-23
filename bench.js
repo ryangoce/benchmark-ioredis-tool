@@ -455,7 +455,7 @@ xsuite('adrai eventstore with fast-redis backend and with pipelining', function 
   });
 });
 
-suite('adrai eventstore with fast-redis backend, with pipelining and batched executed', function () {
+suite('adrai eventstore with fast-redis backend, with pipelining and batched executed @11x', function () {
   let es;
   let counter = 0;
 
@@ -593,6 +593,98 @@ suite('adrai eventstore with fast-redis backend, with pipelining and batched exe
     }
   });
 
+  after(function (cb) {
+    cleanData(cb);
+  });
+});
+
+suite('adrai eventstore with fast-redis backend, with pipelining and batched executed @9x', function () {
+  let es;
+  let counter = 0;
+
+  const batchSize = process.env.BATCH_SIZE || 500;
+  const numVehicles = process.env.NUM_VEHICLES || 1500;
+  const iterations = Math.ceil(numVehicles / batchSize);
+
+  console.log({
+    batchSize: batchSize,
+    numVehicles: numVehicles,
+    iterations: iterations
+  });
+
+  set('mintime', 0);
+  set('iterations', iterations);
+  set('concurrency', iterations);
+
+  const getFromSnapshot = function (aggregateId, aggregate, context, partitionKey) {
+    return new Promise((resolve, reject) => {
+      es.getFromSnapshot({
+        aggregateId: aggregateId,
+        aggregate: aggregate, // optional
+        context: context, // optional
+        partitionKey: partitionKey
+      }, function (err, snapshot, stream) {
+        if (err) {
+          console.error(err);
+        }
+        resolve({
+          snapshot: snapshot,
+          stream: stream,
+          error: err
+        });
+      });
+    });
+  }
+
+  let vehicleIds = [];
+  before(function (start) {
+    const FastRedisEventStore = require('./fast-redis.eventstore');
+
+    const options = {
+      type: FastRedisEventStore,
+      host: process.env.CACHE_HOST,
+      port: process.env.CACHE_PORT,
+      isCluster: false,
+      prefix: 'bench',
+      pipelined: true
+    };
+
+    es = require('eventstore')(options);
+    es.init(function () {
+      const shortid = require('shortid');
+      const Redis = require('ioredis');
+
+      const redis = new Redis(process.env.CACHE_PORT, process.env.CACHE_HOST);
+
+      redis.on('ready', () => {
+        const pipeline = redis.pipeline();
+        for (let index = 0; index < numVehicles; index++) {
+          const id = shortid.generate();
+          pipeline.set(`bench:salesChannelInstanceVehicle:aggregate:${id}:snapshot`, '{\"id\":\"ac1d9137-4afe-4f36-85a8-52ee0de5c591\",\"streamId\":\"EySmTVPiS\",\"aggregateId\":\"EySmTVPiS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"commitStamp\":\"2018-10-22T23:01:07.780Z\",\"revision\":9,\"version\":1,\"data\":{\"endedAt\":\"2018-10-23T19:05:00.000Z\",\"clearedAt\":\"2018-10-24T19:00:00.000Z\",\"salesChannelInstanceVehicleId\":\"EySmTVPiS\",\"salesChannelInstanceId\":\"VJg0Fh4vsS\",\"salesChannelId\":\"VJRF34viB\",\"vehicleId\":\"N1TukTVwiB\",\"vin\":\"WAUBFAFL5EN002168\",\"yearId\":2014,\"yearName\":\"2014\",\"makeId\":4,\"makeName\":\"Audi\",\"modelId\":4,\"modelName\":\"A4\",\"trimId\":312872,\"trimName\":\"Premium Sedan 4D\",\"engineId\":5433058,\"engineName\":\"4-Cyl, Turbo, 2.0 Liter\",\"transmissionId\":5433095,\"transmissionName\":\"Auto, 8-Spd Tiptronic\",\"driveTrainId\":5433139,\"driveTrainName\":\"FWD\",\"mileage\":1412,\"exteriorColorId\":6388662,\"exteriorColorName\":\"Black\",\"vehicleType\":\"Sedan\",\"stockNumber\":\"\",\"licenseNumber\":\"\",\"interiorColorId\":\"\",\"interiorColorName\":\"\",\"dealershipId\":\"AAUABAQC\",\"dealershipName\":\"Folsom Flooring\",\"dealerId\":\"GCwcABAY\",\"dealerName\":\"Ryan Goce\",\"dealerFirstName\":\"Ryan\",\"dealerLastName\":\"Goce\",\"dealerPhotoPath\":\"undefined\",\"askingPrice\":10000,\"reservePrice\":9000,\"isBuyNow\":false,\"startBid\":8600,\"categoryId\":1,\"createdAt\":1540246983578,\"updatedAt\":1540247044202,\"postedAt\":1540247044354,\"status\":null,\"kbb\":14625,\"kbbWithMiles\":17070,\"firstPhotoPath\":\"\"}}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1000, '{\"streamId\":\"VybeC6Ewor\",\"aggregateId\":\"VybeC6Ewor\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":10,\"commitId\":\"0661ba37-081a-43a1-934a-840f32b05fea\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:23:42.010Z\",\"payload\":{\"aggregateId\":\"VybeC6Ewor\",\"name\":\"sales_channel_instance_vehicle_added\",\"payload\":{\"startedAt\":\"2018-10-23T19:00:00.000Z\",\"endedAt\":\"2018-10-23T19:05:00.000Z\",\"clearedAt\":\"2018-10-24T19:00:00.000Z\",\"salesChannelInstanceVehicleId\":\"VybeC6Ewor\",\"salesChannelInstanceId\":\"VJg0Fh4vsS\",\"salesChannelId\":\"VJRF34viB\",\"vehicleId\":\"EyR5A2NvjH\",\"vin\":\"WAUBFAFL5EN002168\",\"yearId\":2014,\"yearName\":\"2014\",\"makeId\":4,\"makeName\":\"Audi\",\"modelId\":4,\"modelName\":\"A4\",\"trimId\":312872,\"trimName\":\"Premium Sedan 4D\",\"engineId\":5433058,\"engineName\":\"4-Cyl, Turbo, 2.0 Liter\",\"transmissionId\":5433095,\"transmissionName\":\"Auto, 8-Spd Tiptronic\",\"driveTrainId\":5433139,\"driveTrainName\":\"FWD\",\"mileage\":814,\"exteriorColorId\":6388662,\"exteriorColorName\":\"Black\",\"vehicleType\":\"Sedan\",\"stockNumber\":\"\",\"licenseNumber\":\"\",\"interiorColorId\":\"\",\"interiorColorName\":\"\",\"dealershipId\":\"AAUABAQC\",\"dealershipName\":\"Folsom Flooring\",\"dealerId\":\"GCwcABAY\",\"dealerName\":\"Ryan Goce\",\"dealerFirstName\":\"Ryan\",\"dealerLastName\":\"Goce\",\"dealerPhotoPath\":\"undefined\",\"askingPrice\":10000,\"reservePrice\":9000,\"isBuyNow\":false,\"startBid\":8600,\"categoryId\":1,\"createdAt\":1540246970128,\"updatedAt\":1540247021872,\"postedAt\":1540247022010,\"status\":null,\"kbb\":14625,\"kbbWithMiles\":17070,\"firstPhotoPath\":\"\"},\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"0661ba37-081a-43a1-934a-840f32b05fea0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1001, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":11,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1002, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":12,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1003, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":13,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1004, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":14,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1005, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":15,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1006, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":16,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1007, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":17,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1008, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":18,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1009, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":19,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1010, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":20,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+
+          vehicleIds.push(id);
+        }
+
+        pipeline.exec(() => {
+          setTimeout(() => {
+            start();
+          }, 3000);
+        });
+      });
+    });
+  });
+
   bench('10,000 vehicles @9x', function (next, a, b, c) {
     const start = Date.now();
     let doneCounter = 0;
@@ -642,6 +734,98 @@ suite('adrai eventstore with fast-redis backend, with pipelining and batched exe
     }
   });
 
+  after(function (cb) {
+    cleanData(cb);
+  });
+});
+
+suite('adrai eventstore with fast-redis backend, with pipelining and batched executed @7x', function () {
+  let es;
+  let counter = 0;
+
+  const batchSize = process.env.BATCH_SIZE || 500;
+  const numVehicles = process.env.NUM_VEHICLES || 1500;
+  const iterations = Math.ceil(numVehicles / batchSize);
+
+  console.log({
+    batchSize: batchSize,
+    numVehicles: numVehicles,
+    iterations: iterations
+  });
+
+  set('mintime', 0);
+  set('iterations', iterations);
+  set('concurrency', iterations);
+
+  const getFromSnapshot = function (aggregateId, aggregate, context, partitionKey) {
+    return new Promise((resolve, reject) => {
+      es.getFromSnapshot({
+        aggregateId: aggregateId,
+        aggregate: aggregate, // optional
+        context: context, // optional
+        partitionKey: partitionKey
+      }, function (err, snapshot, stream) {
+        if (err) {
+          console.error(err);
+        }
+        resolve({
+          snapshot: snapshot,
+          stream: stream,
+          error: err
+        });
+      });
+    });
+  }
+
+  let vehicleIds = [];
+  before(function (start) {
+    const FastRedisEventStore = require('./fast-redis.eventstore');
+
+    const options = {
+      type: FastRedisEventStore,
+      host: process.env.CACHE_HOST,
+      port: process.env.CACHE_PORT,
+      isCluster: false,
+      prefix: 'bench',
+      pipelined: true
+    };
+
+    es = require('eventstore')(options);
+    es.init(function () {
+      const shortid = require('shortid');
+      const Redis = require('ioredis');
+
+      const redis = new Redis(process.env.CACHE_PORT, process.env.CACHE_HOST);
+
+      redis.on('ready', () => {
+        const pipeline = redis.pipeline();
+        for (let index = 0; index < numVehicles; index++) {
+          const id = shortid.generate();
+          pipeline.set(`bench:salesChannelInstanceVehicle:aggregate:${id}:snapshot`, '{\"id\":\"ac1d9137-4afe-4f36-85a8-52ee0de5c591\",\"streamId\":\"EySmTVPiS\",\"aggregateId\":\"EySmTVPiS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"commitStamp\":\"2018-10-22T23:01:07.780Z\",\"revision\":9,\"version\":1,\"data\":{\"endedAt\":\"2018-10-23T19:05:00.000Z\",\"clearedAt\":\"2018-10-24T19:00:00.000Z\",\"salesChannelInstanceVehicleId\":\"EySmTVPiS\",\"salesChannelInstanceId\":\"VJg0Fh4vsS\",\"salesChannelId\":\"VJRF34viB\",\"vehicleId\":\"N1TukTVwiB\",\"vin\":\"WAUBFAFL5EN002168\",\"yearId\":2014,\"yearName\":\"2014\",\"makeId\":4,\"makeName\":\"Audi\",\"modelId\":4,\"modelName\":\"A4\",\"trimId\":312872,\"trimName\":\"Premium Sedan 4D\",\"engineId\":5433058,\"engineName\":\"4-Cyl, Turbo, 2.0 Liter\",\"transmissionId\":5433095,\"transmissionName\":\"Auto, 8-Spd Tiptronic\",\"driveTrainId\":5433139,\"driveTrainName\":\"FWD\",\"mileage\":1412,\"exteriorColorId\":6388662,\"exteriorColorName\":\"Black\",\"vehicleType\":\"Sedan\",\"stockNumber\":\"\",\"licenseNumber\":\"\",\"interiorColorId\":\"\",\"interiorColorName\":\"\",\"dealershipId\":\"AAUABAQC\",\"dealershipName\":\"Folsom Flooring\",\"dealerId\":\"GCwcABAY\",\"dealerName\":\"Ryan Goce\",\"dealerFirstName\":\"Ryan\",\"dealerLastName\":\"Goce\",\"dealerPhotoPath\":\"undefined\",\"askingPrice\":10000,\"reservePrice\":9000,\"isBuyNow\":false,\"startBid\":8600,\"categoryId\":1,\"createdAt\":1540246983578,\"updatedAt\":1540247044202,\"postedAt\":1540247044354,\"status\":null,\"kbb\":14625,\"kbbWithMiles\":17070,\"firstPhotoPath\":\"\"}}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1000, '{\"streamId\":\"VybeC6Ewor\",\"aggregateId\":\"VybeC6Ewor\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":10,\"commitId\":\"0661ba37-081a-43a1-934a-840f32b05fea\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:23:42.010Z\",\"payload\":{\"aggregateId\":\"VybeC6Ewor\",\"name\":\"sales_channel_instance_vehicle_added\",\"payload\":{\"startedAt\":\"2018-10-23T19:00:00.000Z\",\"endedAt\":\"2018-10-23T19:05:00.000Z\",\"clearedAt\":\"2018-10-24T19:00:00.000Z\",\"salesChannelInstanceVehicleId\":\"VybeC6Ewor\",\"salesChannelInstanceId\":\"VJg0Fh4vsS\",\"salesChannelId\":\"VJRF34viB\",\"vehicleId\":\"EyR5A2NvjH\",\"vin\":\"WAUBFAFL5EN002168\",\"yearId\":2014,\"yearName\":\"2014\",\"makeId\":4,\"makeName\":\"Audi\",\"modelId\":4,\"modelName\":\"A4\",\"trimId\":312872,\"trimName\":\"Premium Sedan 4D\",\"engineId\":5433058,\"engineName\":\"4-Cyl, Turbo, 2.0 Liter\",\"transmissionId\":5433095,\"transmissionName\":\"Auto, 8-Spd Tiptronic\",\"driveTrainId\":5433139,\"driveTrainName\":\"FWD\",\"mileage\":814,\"exteriorColorId\":6388662,\"exteriorColorName\":\"Black\",\"vehicleType\":\"Sedan\",\"stockNumber\":\"\",\"licenseNumber\":\"\",\"interiorColorId\":\"\",\"interiorColorName\":\"\",\"dealershipId\":\"AAUABAQC\",\"dealershipName\":\"Folsom Flooring\",\"dealerId\":\"GCwcABAY\",\"dealerName\":\"Ryan Goce\",\"dealerFirstName\":\"Ryan\",\"dealerLastName\":\"Goce\",\"dealerPhotoPath\":\"undefined\",\"askingPrice\":10000,\"reservePrice\":9000,\"isBuyNow\":false,\"startBid\":8600,\"categoryId\":1,\"createdAt\":1540246970128,\"updatedAt\":1540247021872,\"postedAt\":1540247022010,\"status\":null,\"kbb\":14625,\"kbbWithMiles\":17070,\"firstPhotoPath\":\"\"},\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"0661ba37-081a-43a1-934a-840f32b05fea0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1001, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":11,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1002, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":12,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1003, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":13,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1004, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":14,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1005, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":15,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1006, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":16,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1007, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":17,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1008, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":18,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1009, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":19,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1010, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":20,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+
+          vehicleIds.push(id);
+        }
+
+        pipeline.exec(() => {
+          setTimeout(() => {
+            start();
+          }, 3000);
+        });
+      });
+    });
+  });
+
   bench('10,000 vehicles @7x', function (next, a, b, c) {
     const start = Date.now();
     let doneCounter = 0;
@@ -688,6 +872,98 @@ suite('adrai eventstore with fast-redis backend, with pipelining and batched exe
     }
   });
 
+  after(function (cb) {
+    cleanData(cb);
+  });
+});
+
+suite('adrai eventstore with fast-redis backend, with pipelining and batched executed @5x', function () {
+  let es;
+  let counter = 0;
+
+  const batchSize = process.env.BATCH_SIZE || 500;
+  const numVehicles = process.env.NUM_VEHICLES || 1500;
+  const iterations = Math.ceil(numVehicles / batchSize);
+
+  console.log({
+    batchSize: batchSize,
+    numVehicles: numVehicles,
+    iterations: iterations
+  });
+
+  set('mintime', 0);
+  set('iterations', iterations);
+  set('concurrency', iterations);
+
+  const getFromSnapshot = function (aggregateId, aggregate, context, partitionKey) {
+    return new Promise((resolve, reject) => {
+      es.getFromSnapshot({
+        aggregateId: aggregateId,
+        aggregate: aggregate, // optional
+        context: context, // optional
+        partitionKey: partitionKey
+      }, function (err, snapshot, stream) {
+        if (err) {
+          console.error(err);
+        }
+        resolve({
+          snapshot: snapshot,
+          stream: stream,
+          error: err
+        });
+      });
+    });
+  }
+
+  let vehicleIds = [];
+  before(function (start) {
+    const FastRedisEventStore = require('./fast-redis.eventstore');
+
+    const options = {
+      type: FastRedisEventStore,
+      host: process.env.CACHE_HOST,
+      port: process.env.CACHE_PORT,
+      isCluster: false,
+      prefix: 'bench',
+      pipelined: true
+    };
+
+    es = require('eventstore')(options);
+    es.init(function () {
+      const shortid = require('shortid');
+      const Redis = require('ioredis');
+
+      const redis = new Redis(process.env.CACHE_PORT, process.env.CACHE_HOST);
+
+      redis.on('ready', () => {
+        const pipeline = redis.pipeline();
+        for (let index = 0; index < numVehicles; index++) {
+          const id = shortid.generate();
+          pipeline.set(`bench:salesChannelInstanceVehicle:aggregate:${id}:snapshot`, '{\"id\":\"ac1d9137-4afe-4f36-85a8-52ee0de5c591\",\"streamId\":\"EySmTVPiS\",\"aggregateId\":\"EySmTVPiS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"commitStamp\":\"2018-10-22T23:01:07.780Z\",\"revision\":9,\"version\":1,\"data\":{\"endedAt\":\"2018-10-23T19:05:00.000Z\",\"clearedAt\":\"2018-10-24T19:00:00.000Z\",\"salesChannelInstanceVehicleId\":\"EySmTVPiS\",\"salesChannelInstanceId\":\"VJg0Fh4vsS\",\"salesChannelId\":\"VJRF34viB\",\"vehicleId\":\"N1TukTVwiB\",\"vin\":\"WAUBFAFL5EN002168\",\"yearId\":2014,\"yearName\":\"2014\",\"makeId\":4,\"makeName\":\"Audi\",\"modelId\":4,\"modelName\":\"A4\",\"trimId\":312872,\"trimName\":\"Premium Sedan 4D\",\"engineId\":5433058,\"engineName\":\"4-Cyl, Turbo, 2.0 Liter\",\"transmissionId\":5433095,\"transmissionName\":\"Auto, 8-Spd Tiptronic\",\"driveTrainId\":5433139,\"driveTrainName\":\"FWD\",\"mileage\":1412,\"exteriorColorId\":6388662,\"exteriorColorName\":\"Black\",\"vehicleType\":\"Sedan\",\"stockNumber\":\"\",\"licenseNumber\":\"\",\"interiorColorId\":\"\",\"interiorColorName\":\"\",\"dealershipId\":\"AAUABAQC\",\"dealershipName\":\"Folsom Flooring\",\"dealerId\":\"GCwcABAY\",\"dealerName\":\"Ryan Goce\",\"dealerFirstName\":\"Ryan\",\"dealerLastName\":\"Goce\",\"dealerPhotoPath\":\"undefined\",\"askingPrice\":10000,\"reservePrice\":9000,\"isBuyNow\":false,\"startBid\":8600,\"categoryId\":1,\"createdAt\":1540246983578,\"updatedAt\":1540247044202,\"postedAt\":1540247044354,\"status\":null,\"kbb\":14625,\"kbbWithMiles\":17070,\"firstPhotoPath\":\"\"}}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1000, '{\"streamId\":\"VybeC6Ewor\",\"aggregateId\":\"VybeC6Ewor\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":10,\"commitId\":\"0661ba37-081a-43a1-934a-840f32b05fea\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:23:42.010Z\",\"payload\":{\"aggregateId\":\"VybeC6Ewor\",\"name\":\"sales_channel_instance_vehicle_added\",\"payload\":{\"startedAt\":\"2018-10-23T19:00:00.000Z\",\"endedAt\":\"2018-10-23T19:05:00.000Z\",\"clearedAt\":\"2018-10-24T19:00:00.000Z\",\"salesChannelInstanceVehicleId\":\"VybeC6Ewor\",\"salesChannelInstanceId\":\"VJg0Fh4vsS\",\"salesChannelId\":\"VJRF34viB\",\"vehicleId\":\"EyR5A2NvjH\",\"vin\":\"WAUBFAFL5EN002168\",\"yearId\":2014,\"yearName\":\"2014\",\"makeId\":4,\"makeName\":\"Audi\",\"modelId\":4,\"modelName\":\"A4\",\"trimId\":312872,\"trimName\":\"Premium Sedan 4D\",\"engineId\":5433058,\"engineName\":\"4-Cyl, Turbo, 2.0 Liter\",\"transmissionId\":5433095,\"transmissionName\":\"Auto, 8-Spd Tiptronic\",\"driveTrainId\":5433139,\"driveTrainName\":\"FWD\",\"mileage\":814,\"exteriorColorId\":6388662,\"exteriorColorName\":\"Black\",\"vehicleType\":\"Sedan\",\"stockNumber\":\"\",\"licenseNumber\":\"\",\"interiorColorId\":\"\",\"interiorColorName\":\"\",\"dealershipId\":\"AAUABAQC\",\"dealershipName\":\"Folsom Flooring\",\"dealerId\":\"GCwcABAY\",\"dealerName\":\"Ryan Goce\",\"dealerFirstName\":\"Ryan\",\"dealerLastName\":\"Goce\",\"dealerPhotoPath\":\"undefined\",\"askingPrice\":10000,\"reservePrice\":9000,\"isBuyNow\":false,\"startBid\":8600,\"categoryId\":1,\"createdAt\":1540246970128,\"updatedAt\":1540247021872,\"postedAt\":1540247022010,\"status\":null,\"kbb\":14625,\"kbbWithMiles\":17070,\"firstPhotoPath\":\"\"},\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"0661ba37-081a-43a1-934a-840f32b05fea0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1001, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":11,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1002, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":12,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1003, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":13,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1004, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":14,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1005, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":15,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1006, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":16,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1007, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":17,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1008, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":18,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1009, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":19,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1010, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":20,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+
+          vehicleIds.push(id);
+        }
+
+        pipeline.exec(() => {
+          setTimeout(() => {
+            start();
+          }, 3000);
+        });
+      });
+    });
+  });
+
   bench('10,000 vehicles @5x', function (next, a, b, c) {
     const start = Date.now();
     let doneCounter = 0;
@@ -729,6 +1005,98 @@ suite('adrai eventstore with fast-redis backend, with pipelining and batched exe
         })
         .then(maybeNext);
     }
+  });
+
+  after(function (cb) {
+    cleanData(cb);
+  });
+});
+
+suite('adrai eventstore with fast-redis backend, with pipelining and batched executed @3x', function () {
+  let es;
+  let counter = 0;
+
+  const batchSize = process.env.BATCH_SIZE || 500;
+  const numVehicles = process.env.NUM_VEHICLES || 1500;
+  const iterations = Math.ceil(numVehicles / batchSize);
+
+  console.log({
+    batchSize: batchSize,
+    numVehicles: numVehicles,
+    iterations: iterations
+  });
+
+  set('mintime', 0);
+  set('iterations', iterations);
+  set('concurrency', iterations);
+
+  const getFromSnapshot = function (aggregateId, aggregate, context, partitionKey) {
+    return new Promise((resolve, reject) => {
+      es.getFromSnapshot({
+        aggregateId: aggregateId,
+        aggregate: aggregate, // optional
+        context: context, // optional
+        partitionKey: partitionKey
+      }, function (err, snapshot, stream) {
+        if (err) {
+          console.error(err);
+        }
+        resolve({
+          snapshot: snapshot,
+          stream: stream,
+          error: err
+        });
+      });
+    });
+  }
+
+  let vehicleIds = [];
+  before(function (start) {
+    const FastRedisEventStore = require('./fast-redis.eventstore');
+
+    const options = {
+      type: FastRedisEventStore,
+      host: process.env.CACHE_HOST,
+      port: process.env.CACHE_PORT,
+      isCluster: false,
+      prefix: 'bench',
+      pipelined: true
+    };
+
+    es = require('eventstore')(options);
+    es.init(function () {
+      const shortid = require('shortid');
+      const Redis = require('ioredis');
+
+      const redis = new Redis(process.env.CACHE_PORT, process.env.CACHE_HOST);
+
+      redis.on('ready', () => {
+        const pipeline = redis.pipeline();
+        for (let index = 0; index < numVehicles; index++) {
+          const id = shortid.generate();
+          pipeline.set(`bench:salesChannelInstanceVehicle:aggregate:${id}:snapshot`, '{\"id\":\"ac1d9137-4afe-4f36-85a8-52ee0de5c591\",\"streamId\":\"EySmTVPiS\",\"aggregateId\":\"EySmTVPiS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"commitStamp\":\"2018-10-22T23:01:07.780Z\",\"revision\":9,\"version\":1,\"data\":{\"endedAt\":\"2018-10-23T19:05:00.000Z\",\"clearedAt\":\"2018-10-24T19:00:00.000Z\",\"salesChannelInstanceVehicleId\":\"EySmTVPiS\",\"salesChannelInstanceId\":\"VJg0Fh4vsS\",\"salesChannelId\":\"VJRF34viB\",\"vehicleId\":\"N1TukTVwiB\",\"vin\":\"WAUBFAFL5EN002168\",\"yearId\":2014,\"yearName\":\"2014\",\"makeId\":4,\"makeName\":\"Audi\",\"modelId\":4,\"modelName\":\"A4\",\"trimId\":312872,\"trimName\":\"Premium Sedan 4D\",\"engineId\":5433058,\"engineName\":\"4-Cyl, Turbo, 2.0 Liter\",\"transmissionId\":5433095,\"transmissionName\":\"Auto, 8-Spd Tiptronic\",\"driveTrainId\":5433139,\"driveTrainName\":\"FWD\",\"mileage\":1412,\"exteriorColorId\":6388662,\"exteriorColorName\":\"Black\",\"vehicleType\":\"Sedan\",\"stockNumber\":\"\",\"licenseNumber\":\"\",\"interiorColorId\":\"\",\"interiorColorName\":\"\",\"dealershipId\":\"AAUABAQC\",\"dealershipName\":\"Folsom Flooring\",\"dealerId\":\"GCwcABAY\",\"dealerName\":\"Ryan Goce\",\"dealerFirstName\":\"Ryan\",\"dealerLastName\":\"Goce\",\"dealerPhotoPath\":\"undefined\",\"askingPrice\":10000,\"reservePrice\":9000,\"isBuyNow\":false,\"startBid\":8600,\"categoryId\":1,\"createdAt\":1540246983578,\"updatedAt\":1540247044202,\"postedAt\":1540247044354,\"status\":null,\"kbb\":14625,\"kbbWithMiles\":17070,\"firstPhotoPath\":\"\"}}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1000, '{\"streamId\":\"VybeC6Ewor\",\"aggregateId\":\"VybeC6Ewor\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":10,\"commitId\":\"0661ba37-081a-43a1-934a-840f32b05fea\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:23:42.010Z\",\"payload\":{\"aggregateId\":\"VybeC6Ewor\",\"name\":\"sales_channel_instance_vehicle_added\",\"payload\":{\"startedAt\":\"2018-10-23T19:00:00.000Z\",\"endedAt\":\"2018-10-23T19:05:00.000Z\",\"clearedAt\":\"2018-10-24T19:00:00.000Z\",\"salesChannelInstanceVehicleId\":\"VybeC6Ewor\",\"salesChannelInstanceId\":\"VJg0Fh4vsS\",\"salesChannelId\":\"VJRF34viB\",\"vehicleId\":\"EyR5A2NvjH\",\"vin\":\"WAUBFAFL5EN002168\",\"yearId\":2014,\"yearName\":\"2014\",\"makeId\":4,\"makeName\":\"Audi\",\"modelId\":4,\"modelName\":\"A4\",\"trimId\":312872,\"trimName\":\"Premium Sedan 4D\",\"engineId\":5433058,\"engineName\":\"4-Cyl, Turbo, 2.0 Liter\",\"transmissionId\":5433095,\"transmissionName\":\"Auto, 8-Spd Tiptronic\",\"driveTrainId\":5433139,\"driveTrainName\":\"FWD\",\"mileage\":814,\"exteriorColorId\":6388662,\"exteriorColorName\":\"Black\",\"vehicleType\":\"Sedan\",\"stockNumber\":\"\",\"licenseNumber\":\"\",\"interiorColorId\":\"\",\"interiorColorName\":\"\",\"dealershipId\":\"AAUABAQC\",\"dealershipName\":\"Folsom Flooring\",\"dealerId\":\"GCwcABAY\",\"dealerName\":\"Ryan Goce\",\"dealerFirstName\":\"Ryan\",\"dealerLastName\":\"Goce\",\"dealerPhotoPath\":\"undefined\",\"askingPrice\":10000,\"reservePrice\":9000,\"isBuyNow\":false,\"startBid\":8600,\"categoryId\":1,\"createdAt\":1540246970128,\"updatedAt\":1540247021872,\"postedAt\":1540247022010,\"status\":null,\"kbb\":14625,\"kbbWithMiles\":17070,\"firstPhotoPath\":\"\"},\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"0661ba37-081a-43a1-934a-840f32b05fea0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1001, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":11,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1002, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":12,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1003, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":13,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1004, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":14,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1005, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":15,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1006, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":16,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1007, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":17,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1008, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":18,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1009, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":19,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+          pipeline.zadd(`bench:salesChannelInstanceVehicle:aggregate:${id}:events`, 1010, '{\"streamId\":\"E1xAJ6NPsS\",\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\",\"context\":\"auction\",\"streamRevision\":20,\"commitId\":\"de2f5521-572c-442d-b3c8-9803f8eae35c\",\"commitSequence\":0,\"commitStamp\":\"2018-10-22T22:31:18.724Z\",\"payload\":{\"name\":\"sales_channel_instance_vehicle_started\",\"payload\":{\"startAt\":\"2018-10-22T22:31:18.269Z\"},\"aggregateId\":\"E1xAJ6NPsS\",\"aggregate\":\"salesChannelInstanceVehicle\"},\"position\":null,\"id\":\"de2f5521-572c-442d-b3c8-9803f8eae35c0\",\"restInCommitStream\":0}');
+
+          vehicleIds.push(id);
+        }
+
+        pipeline.exec(() => {
+          setTimeout(() => {
+            start();
+          }, 3000);
+        });
+      });
+    });
   });
 
   bench('10,000 vehicles @3x', function (next, a, b, c) {
