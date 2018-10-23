@@ -2,15 +2,15 @@ var Store = require('eventstore').Store,
     util = require('util'),
     _ = require('lodash');
 
+const shortid = require('shortid');
+
 const Redis = require('ioredis');
 
 let durationMap = {};
-let totalItems = 0;
-let totalDuration = 0;
 
 setInterval(() => {
     _.each(Object.keys(durationMap), (key) => {
-        console.log(`${key}. ${durationMap[key].totalDuration / durationMap[key].totalItems} ave. ${durationMap[key].max} max.`);
+        console.log(`${key}. ${durationMap[key].totalDuration / durationMap[key].totalItems} ave. ${durationMap[key].max} max. ${durationMap[key].totalDuration}/${durationMap[key].totalItems} total duration/items`);
     });
 
     durationMap = {};
@@ -63,15 +63,21 @@ _.extend(FastRedis.prototype, {
 
     _waitForExec: function(callback) {
         const self = this;
+        const nagleBatchLen = 100;
         const pipeline = self._pipeline;
         self._pipelineCallbacks.push(callback);
 
         const continueExec = function() {
             const callbacks = _.cloneDeep(self._pipelineCallbacks);
+            const startExec = Date.now();
+
+            const start = Date.now();
             self._pipeline.exec().then((data) => {
-                if (data.length > 100) {
-                    console.log(`exectued batched redis commands: ${data.length}. on: ${Date.now()}`);
+                if (data.length >= 100) {
+                    // console.log(`executed batched redis commands: ${data.length}. start: ${start}; end: ${Date.now()}`);
                 }
+
+                addDuration('pipeline.exec', startExec, Date.now());
 
                 for (let idx = 0; idx < callbacks.length; idx++) {
                     const cb = callbacks[idx];
@@ -95,7 +101,6 @@ _.extend(FastRedis.prototype, {
             self._pipelineNagleTimeout = null;
         };
 
-        const nagleBatchLen = 100;
         if (pipeline.length >= nagleBatchLen) {
             // console.log(`reached batched nagle len: ${nagleBatchLen}. on: ${Date.now()}`);
             continueExec();
@@ -383,12 +388,6 @@ _.extend(FastRedis.prototype, {
         const start = Date.now();
         Promise.all(tasks).then(() => {
             const end = new Date().getTime();
-            const duration = end - start;
-            totalDuration += duration;
-            totalItems++;
-            if (duration > 100) {
-                // console.warn(`addEvents greater than 100ms. actual ${end - start}ms.`);
-            }
 
             addDuration('addEvents', start, end);
 
