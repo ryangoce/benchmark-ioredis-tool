@@ -38,7 +38,6 @@ const addDuration = function(name, start, end) {
 }
 
 function FastRedis(opts) {
-    console.log(opts);
     var options = _.defaults(opts || {}, {
         prefix: '',
         maxSnapshotLength: 10000,
