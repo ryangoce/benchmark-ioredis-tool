@@ -9,9 +9,9 @@ const Redis = require('ioredis');
 let durationMap = {};
 
 setInterval(() => {
-    _.each(Object.keys(durationMap), (key) => {
-        console.log(`${key}. ${durationMap[key].totalDuration / durationMap[key].totalItems} ave. ${durationMap[key].max} max. ${durationMap[key].totalDuration}/${durationMap[key].totalItems} total duration/items`);
-    });
+    // _.each(Object.keys(durationMap), (key) => {
+    //     console.log(`${key}. ${durationMap[key].totalDuration / durationMap[key].totalItems} ave. ${durationMap[key].max} max. ${durationMap[key].totalDuration}/${durationMap[key].totalItems} total duration/items`);
+    // });
 
     durationMap = {};
 }, 10000);
