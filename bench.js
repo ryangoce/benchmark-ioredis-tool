@@ -542,7 +542,7 @@ suite('adrai eventstore with fast-redis backend, with pipelining and batched exe
     });
   });
 
-  bench('10,000 vehicles @11x', function (next, a, b, c) {
+  bench(`${numVehicles} vehicles @11x`, function (next, a, b, c) {
     const start = Date.now();
     let doneCounter = 0;
     const maybeNext = function () {
@@ -685,7 +685,7 @@ suite('adrai eventstore with fast-redis backend, with pipelining and batched exe
     });
   });
 
-  bench('10,000 vehicles @9x', function (next, a, b, c) {
+  bench(`${numVehicles} vehicles @9x`, function (next, a, b, c) {
     const start = Date.now();
     let doneCounter = 0;
     const maybeNext = function () {
@@ -826,7 +826,7 @@ suite('adrai eventstore with fast-redis backend, with pipelining and batched exe
     });
   });
 
-  bench('10,000 vehicles @7x', function (next, a, b, c) {
+  bench(`${numVehicles} vehicles @7x`, function (next, a, b, c) {
     const start = Date.now();
     let doneCounter = 0;
     const maybeNext = function () {
@@ -964,7 +964,7 @@ suite('adrai eventstore with fast-redis backend, with pipelining and batched exe
     });
   });
 
-  bench('10,000 vehicles @5x', function (next, a, b, c) {
+  bench(`${numVehicles} vehicles @5x`, function (next, a, b, c) {
     const start = Date.now();
     let doneCounter = 0;
     const maybeNext = function () {
@@ -1099,7 +1099,7 @@ suite('adrai eventstore with fast-redis backend, with pipelining and batched exe
     });
   });
 
-  bench('10,000 vehicles @3x', function (next, a, b, c) {
+  bench(`${numVehicles} vehicles @3x`, function (next, a, b, c) {
     const start = Date.now();
     let doneCounter = 0;
     const maybeNext = function () {
